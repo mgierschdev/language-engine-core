@@ -6,6 +6,74 @@ const vocabLemmaMap = new Map(
   deVocabulary.map((item) => [item.lemma.toLowerCase(), item.lemma])
 );
 
+const findAllOccurrences = (haystack: string, needle: string): number[] => {
+  if (needle.length === 0) {
+    return [];
+  }
+  const out: number[] = [];
+  let idx = haystack.indexOf(needle);
+  while (idx !== -1) {
+    out.push(idx);
+    idx = haystack.indexOf(needle, idx + 1);
+  }
+  return out;
+};
+
+const normalizeClozeIndices = (exercise: Exercise): Exercise => {
+  const answer = exercise.cloze.answer;
+  const occurrences = findAllOccurrences(exercise.promptText, answer);
+  if (occurrences.length === 0) {
+    return exercise;
+  }
+
+  const hint = exercise.cloze.start;
+  const bestStart = occurrences.reduce((best, current) => (
+    Math.abs(current - hint) < Math.abs(best - hint) ? current : best
+  ), occurrences[0]);
+
+  return {
+    ...exercise,
+    cloze: {
+      ...exercise.cloze,
+      start: bestStart,
+      end: bestStart + answer.length,
+    },
+  };
+};
+
+const normalizeDistractors = (exercise: Exercise): Exercise => {
+  const answer = exercise.cloze.answer;
+  const distractors = exercise.cloze.distractors;
+  if (!distractors || distractors.length === 0) {
+    return exercise;
+  }
+
+  const seen = new Set<string>();
+  const cleaned: string[] = [];
+  for (const raw of distractors) {
+    const value = raw.trim();
+    if (!value) {
+      continue;
+    }
+    if (value === answer) {
+      continue;
+    }
+    if (seen.has(value)) {
+      continue;
+    }
+    seen.add(value);
+    cleaned.push(value);
+  }
+
+  return {
+    ...exercise,
+    cloze: {
+      ...exercise.cloze,
+      distractors: cleaned.length > 0 ? cleaned : undefined,
+    },
+  };
+};
+
 const extractVocabulary = (exercise: Exercise): string[] => {
   const parts: string[] = [
     exercise.promptText,
@@ -320,6 +388,6 @@ const deExercisesRaw: Exercise[] = [
 ];
 
 export const deExercises: Exercise[] = deExercisesRaw.map((exercise) => ({
-  ...exercise,
+  ...normalizeDistractors(normalizeClozeIndices(exercise)),
   vocabulary: extractVocabulary(exercise),
 }));
