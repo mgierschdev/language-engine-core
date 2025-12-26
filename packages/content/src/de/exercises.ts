@@ -379,12 +379,75 @@ const deExercisesRaw: Exercise[] = [
   { id: "de-serv-17", language: "de", exerciseType: "cloze_text", promptText: "Sie bittet den Support um Hilfe.", cloze: { answer: "um", start: 23, end: 25, distractors: ["an", "auf", "fuer"] }, ruleIds: ["de.verb.prep.akk"], level: "B2", difficulty: 0.75, tags: ["services"] },
   { id: "de-serv-18", language: "de", exerciseType: "cloze_text", promptText: "Die Qualität ist hervorragend.", cloze: { answer: "hervorragend", start: 16, end: 28, distractors: ["hervorragende", "hervorragenden", "hervorragender"] }, ruleIds: ["de.adj.predicative"], level: "B2", difficulty: 0.76, tags: ["services"] },
   { id: "de-serv-19", language: "de", exerciseType: "cloze_text", promptText: "Kundenzufriedenheit hat oberste Priorität.", cloze: { answer: "oberste", start: 24, end: 31, distractors: ["obersten", "oberster", "oberstes"] }, ruleIds: ["de.adj.definite.akk.fem"], level: "C1", difficulty: 0.9, tags: ["services"] },
-  { id: "de-serv-20", language: "de", exerciseType: "cloze_text", promptText: "Er verlaesst sich auf den Fachmann.", cloze: { answer: "auf", start: 19, end: 22, distractors: ["an", "fuer", "mit"] }, ruleIds: ["de.verb.prep.akk"], level: "C1", difficulty: 0.91, tags: ["services"] },
+  { id: "de-serv-20", language: "de", exerciseType: "cloze_text", promptText: "Er verlaesst sich auf den Fachmann.", cloze: { answer: "auf", start: 19, end: 22, distractors: ["an", "fuer", "mit"] }, ruleIds: ["de.verb.prep.akk"], level: "C1", difficulty: 0.9, tags: ["services"] },
   { id: "de-serv-21", language: "de", exerciseType: "cloze_text", promptText: "Wir muessen die Dienstleistung optimieren.", cloze: { answer: "optimieren", start: 30, end: 40, distractors: ["machen", "haben", "gehen"] }, ruleIds: ["de.verb.vocabulary"], level: "C1", difficulty: 0.92, tags: ["services"] },
   { id: "de-serv-22", language: "de", exerciseType: "cloze_text", promptText: "Das Angebot ist unschlagbar.", cloze: { answer: "unschlagbar", start: 16, end: 27, distractors: ["unschlagbare", "unschlagbaren", "unschlagbarer"] }, ruleIds: ["de.adj.predicative"], level: "C1", difficulty: 0.93, tags: ["services"] },
   { id: "de-serv-23", language: "de", exerciseType: "cloze_text", promptText: "Sie hat die Beschwerde eingereicht.", cloze: { answer: "eingereicht", start: 23, end: 33, distractors: ["reichen", "reicht", "gereicht"] }, ruleIds: ["de.perfekt.partizip"], level: "C1", difficulty: 0.94, tags: ["services"] },
   { id: "de-serv-24", language: "de", exerciseType: "cloze_text", promptText: "Wir schaetzen die fachkundige Beratung.", cloze: { answer: "fachkundige", start: 15, end: 26, distractors: ["fachkundigen", "fachkundiger", "fachkundiges"] }, ruleIds: ["de.adj.definite.akk.fem"], level: "C1", difficulty: 0.95, tags: ["services"] },
-  { id: "de-serv-25", language: "de", exerciseType: "cloze_text", promptText: "Die Zuverlaessigkeit ist unser Markenzeichen.", cloze: { answer: "unser", start: 25, end: 30, distractors: ["unsere", "unserem", "unserer"] }, ruleIds: ["de.case.nominativ.possessive"], level: "C1", difficulty: 0.96, tags: ["services"] }
+  { id: "de-serv-25", language: "de", exerciseType: "cloze_text", promptText: "Die Zuverlaessigkeit ist unser Markenzeichen.", cloze: { answer: "unser", start: 25, end: 30, distractors: ["unsere", "unserem", "unserer"] }, ruleIds: ["de.case.nominativ.possessive"], level: "C1", difficulty: 0.96, tags: ["services"] },
+
+  // ==========================================
+  // NEW B1-B2 ADVANCED EXERCISES (20 Entries)
+  // ==========================================
+  // Word Order - TEE (Time-Expression-End)
+  { id: "de-adv-01", language: "de", exerciseType: "cloze_text", promptText: "Ich gehe heute ins Kino.", cloze: { answer: "heute", start: 9, end: 14, distractors: ["morgen", "gestern", "oft"] }, ruleIds: ["de.wordorder.main.tee"], level: "B1", difficulty: 0.55, tags: ["daily_life"], theme: "daily_life" },
+  
+  // Subordinate Clause Word Order
+  { id: "de-adv-02", language: "de", exerciseType: "cloze_text", promptText: "Ich weiss, dass er kommt.", cloze: { answer: "kommt", start: 19, end: 24, distractors: ["kommen", "kam", "gekommen"] }, ruleIds: ["de.wordorder.subordinate.clause"], level: "B1", difficulty: 0.56, tags: ["general"], theme: "general" },
+  
+  // Modal Verb Word Order
+  { id: "de-adv-03", language: "de", exerciseType: "cloze_text", promptText: "Er kann sehr gut schwimmen.", cloze: { answer: "schwimmen", start: 18, end: 27, distractors: ["schwimmt", "geschwommen", "schwam"] }, ruleIds: ["de.wordorder.modal.verb"], level: "B1", difficulty: 0.57, tags: ["leisure"], theme: "leisure" },
+  
+  // Inversion
+  { id: "de-adv-04", language: "de", exerciseType: "cloze_text", promptText: "Morgen fahre ich nach Berlin.", cloze: { answer: "fahre", start: 7, end: 12, distractors: ["ich fahre", "fuhr", "gefahren"] }, ruleIds: ["de.wordorder.inversion"], level: "B1", difficulty: 0.58, tags: ["travel"], theme: "travel" },
+  
+  // Subordinating Conjunctions
+  { id: "de-adv-05", language: "de", exerciseType: "cloze_text", promptText: "Ich bleibe, weil ich müde bin.", cloze: { answer: "weil", start: 13, end: 17, distractors: ["dass", "ob", "wenn"] }, ruleIds: ["de.conjunctions.subordinating"], level: "B1", difficulty: 0.59, tags: ["daily_life"], theme: "daily_life" },
+  
+  // Coordinating Conjunctions
+  { id: "de-adv-06", language: "de", exerciseType: "cloze_text", promptText: "Er kam, aber sie ging.", cloze: { answer: "aber", start: 9, end: 13, distractors: ["und", "oder", "denn"] }, ruleIds: ["de.conjunctions.coordinating"], level: "B1", difficulty: 0.60, tags: ["general"], theme: "general" },
+  
+  // Konjunktiv II (Subjunctive)
+  { id: "de-adv-07", language: "de", exerciseType: "cloze_text", promptText: "Ich wuerde gerne kommen.", cloze: { answer: "wuerde", start: 4, end: 10, distractors: ["wurde", "will", "wollte"] }, ruleIds: ["de.subjunctive.konjunktiv2"], level: "B1", difficulty: 0.61, tags: ["general"], theme: "general" },
+  
+  // Indirect Speech
+  { id: "de-adv-08", language: "de", exerciseType: "cloze_text", promptText: "Er sagte, er habe keine Zeit.", cloze: { answer: "habe", start: 14, end: 18, distractors: ["hat", "hatte", "hätte"] }, ruleIds: ["de.subjunctive.indirect.speech"], level: "B2", difficulty: 0.72, tags: ["work"], theme: "work" },
+  
+  // Relative Clause
+  { id: "de-adv-09", language: "de", exerciseType: "cloze_text", promptText: "Der Mann, der hier wohnt, ist nett.", cloze: { answer: "der", start: 10, end: 13, distractors: ["den", "dem", "des"] }, ruleIds: ["de.relative.clause"], level: "B1", difficulty: 0.62, tags: ["daily_life"], theme: "daily_life" },
+  
+  // Relative Pronoun Case
+  { id: "de-adv-10", language: "de", exerciseType: "cloze_text", promptText: "Die Frau, der ich helfe, ist alt.", cloze: { answer: "der", start: 10, end: 13, distractors: ["die", "den", "dem"] }, ruleIds: ["de.relative.pronoun.case"], level: "B1", difficulty: 0.63, tags: ["general"], theme: "general" },
+  
+  // Present Participle
+  { id: "de-adv-11", language: "de", exerciseType: "cloze_text", promptText: "Das laufende Projekt ist wichtig.", cloze: { answer: "laufende", start: 4, end: 12, distractors: ["laufenden", "laufender", "laufendes"] }, ruleIds: ["de.participle.present"], level: "B2", difficulty: 0.73, tags: ["work"], theme: "work" },
+  
+  // Past Participle Attributive
+  { id: "de-adv-12", language: "de", exerciseType: "cloze_text", promptText: "Das gelesene Buch liegt dort.", cloze: { answer: "gelesene", start: 4, end: 12, distractors: ["gelesenen", "gelesener", "gelesenes"] }, ruleIds: ["de.participle.past.attributive"], level: "B2", difficulty: 0.74, tags: ["education"], theme: "leisure" },
+  
+  // Comparative Adjective
+  { id: "de-adv-13", language: "de", exerciseType: "cloze_text", promptText: "Dieses Buch ist interessanter als jenes.", cloze: { answer: "interessanter", start: 16, end: 29, distractors: ["interessant", "am interessantesten", "interessantest"] }, ruleIds: ["de.comparative.adj"], level: "B1", difficulty: 0.64, tags: ["education"], theme: "leisure" },
+  
+  // Superlative Adjective
+  { id: "de-adv-14", language: "de", exerciseType: "cloze_text", promptText: "Er ist der beste Schueler.", cloze: { answer: "beste", start: 11, end: 16, distractors: ["besten", "besser", "gut"] }, ruleIds: ["de.superlative.adj"], level: "B1", difficulty: 0.65, tags: ["education"], theme: "education" },
+  
+  // Time Expression Idiom
+  { id: "de-adv-15", language: "de", exerciseType: "cloze_text", promptText: "Ich komme gleich zurueck.", cloze: { answer: "gleich", start: 10, end: 16, distractors: ["sofort", "bald", "spaeter"] }, ruleIds: ["de.idiom.time.expression"], level: "B1", difficulty: 0.66, tags: ["daily_life"], theme: "daily_life" },
+  
+  // Common Idiom/Phrase
+  { id: "de-adv-16", language: "de", exerciseType: "cloze_text", promptText: "Das spielt keine Rolle.", cloze: { answer: "spielt", start: 4, end: 10, distractors: ["macht", "ist", "hat"] }, ruleIds: ["de.idiom.common.phrase"], level: "B2", difficulty: 0.75, tags: ["general"], theme: "general" },
+  
+  // Compound Noun
+  { id: "de-adv-17", language: "de", exerciseType: "cloze_text", promptText: "Der Hausarzt untersucht mich.", cloze: { answer: "Hausarzt", start: 4, end: 12, distractors: ["Arzt", "Haus", "Doktor"] }, ruleIds: ["de.noun.compound"], level: "B2", difficulty: 0.76, tags: ["health"], theme: "health" },
+  
+  // Modal Verb Perfect
+  { id: "de-adv-18", language: "de", exerciseType: "cloze_text", promptText: "Er hat kommen muessen.", cloze: { answer: "muessen", start: 15, end: 22, distractors: ["gemusst", "muss", "musste"] }, ruleIds: ["de.modal.verb.perfect"], level: "B2", difficulty: 0.77, tags: ["general"], theme: "general" },
+  
+  // Future Tense
+  { id: "de-adv-19", language: "de", exerciseType: "cloze_text", promptText: "Ich werde morgen arbeiten.", cloze: { answer: "werde", start: 4, end: 9, distractors: ["wurde", "will", "bin"] }, ruleIds: ["de.future.tense"], level: "B1", difficulty: 0.67, tags: ["work"], theme: "work" },
+  
+  // Genitive Case
+  { id: "de-adv-20", language: "de", exerciseType: "cloze_text", promptText: "Das Auto meines Vaters ist neu.", cloze: { answer: "meines", start: 9, end: 15, distractors: ["mein", "meinem", "meinen"] }, ruleIds: ["de.genitive.case"], level: "B2", difficulty: 0.78, tags: ["daily_life"], theme: "daily_life" },
 ];
 
 export const deExercises: Exercise[] = deExercisesRaw.map((exercise) => ({

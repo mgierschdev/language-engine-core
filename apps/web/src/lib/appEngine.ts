@@ -2,6 +2,7 @@ import {
   createEngine,
   defaultMasteryUpdate,
   defaultPriority,
+  type AttemptEvent,
   type Engine,
   type EngineConfig,
   type Exercise,
@@ -235,6 +236,9 @@ export const createLocalStorageAttemptLogRepository = (userId: string): AttemptL
       data.push(event);
       save(data);
     },
+    getAll: () => {
+      return load() as AttemptEvent[];
+    },
   };
 };
 
@@ -268,5 +272,5 @@ export const createAppEngine = (profile: UserProfile) => {
     config
   );
 
-  return { engine, userState };
+  return { engine, userState, attempts, rules };
 };
