@@ -2,9 +2,32 @@ export type RuleId = string;
 
 export type ExerciseType = "cloze_text";
 
+export type CEFRLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+
+export type ErrorCategory = 
+  | "case"
+  | "preposition"
+  | "verb_form"
+  | "word_order"
+  | "adjective_declension"
+  | "idiom"
+  | "vocabulary"
+  | "other";
+
+export type ThemeTag = 
+  | "daily_life"
+  | "travel"
+  | "work"
+  | "education"
+  | "health"
+  | "leisure"
+  | "general";
+
 export interface RuleDefinition {
   ruleId: RuleId;
   baseImportance: number;
+  errorCategory?: ErrorCategory;
+  cefrLevel?: CEFRLevel;
 }
 
 export interface RuleFailure {
@@ -52,6 +75,8 @@ export interface Exercise {
     audioText?: string;
   };
   tags?: string[];
+  theme?: ThemeTag;
+  isDiagnostic?: boolean;
 }
 
 export interface ExerciseSelection {
@@ -145,6 +170,7 @@ export interface UserStateRepository {
 
 export interface AttemptLogRepository {
   append: (event: AttemptEvent) => void;
+  getAll?: (userId: string) => AttemptEvent[];
 }
 
 export interface EngineDependencies {
@@ -173,5 +199,64 @@ export interface Engine {
   ) => AttemptEvent;
 }
 
+// Error Analytics Types
+export interface ErrorTrend {
+  category: ErrorCategory;
+  errorCount: number;
+  totalAttempts: number;
+  errorRate: number;
+  recentErrors: number;
+  improvementRate: number;
+}
+
+export interface DrillPack {
+  category: ErrorCategory;
+  exercises: Exercise[];
+  targetMastery: number;
+  estimatedMinutes: number;
+}
+
+// Streak Tracking Types
+export interface StreakData {
+  userId: string;
+  currentStreak: number;
+  longestStreak: number;
+  lastActivityDate: string;
+  totalActiveDays: number;
+}
+
+// Progress Statistics Types
+export interface ProgressStats {
+  userId: string;
+  totalAttempts: number;
+  correctAttempts: number;
+  accuracyRate: number;
+  masteredRules: RuleId[];
+  weakRules: RuleId[];
+  estimatedCEFRLevel: CEFRLevel;
+  errorTrends: ErrorTrend[];
+}
+
+// Diagnostic/Placement Test Types
+export interface DiagnosticTest {
+  exercises: Exercise[];
+  coverageByLevel: Record<CEFRLevel, number>;
+  coverageByCategory: Record<ErrorCategory, number>;
+}
+
+export interface PlacementResult {
+  estimatedLevel: CEFRLevel;
+  confidence: number;
+  strengthsByCategory: Record<ErrorCategory, number>;
+  recommendedStartLevel: CEFRLevel;
+}
+
 export { createEngine } from "./engine";
 export { defaultMasteryUpdate, defaultPriority } from "./strategies";
+export {
+  computeErrorTrends,
+  estimateCEFRLevel,
+  computeProgressStats,
+  analyzeDiagnosticResults,
+} from "./analytics";
+export { computeStreakData, shouldSendStreakReminder } from "./streak";
