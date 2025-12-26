@@ -1,6 +1,33 @@
 import type { Exercise } from "@le/core";
 
-export const deExercises: Exercise[] = [
+import { deVocabulary } from "./vocab";
+
+const vocabLemmaMap = new Map(
+  deVocabulary.map((item) => [item.lemma.toLowerCase(), item.lemma])
+);
+
+const extractVocabulary = (exercise: Exercise): string[] => {
+  const parts: string[] = [
+    exercise.promptText,
+    exercise.cloze.answer,
+    ...(exercise.cloze.distractors ?? []),
+  ];
+
+  const found = new Set<string>();
+  for (const part of parts) {
+    const tokens = part.match(/[A-Za-z]+/g) ?? [];
+    for (const token of tokens) {
+      const canonical = vocabLemmaMap.get(token.toLowerCase());
+      if (canonical) {
+        found.add(canonical);
+      }
+    }
+  }
+
+  return Array.from(found).sort((a, b) => a.localeCompare(b));
+};
+
+const deExercisesRaw: Exercise[] = [
   // ==========================================
   // TOPIC: WORK (25 Entries)
   // ==========================================
@@ -291,3 +318,8 @@ export const deExercises: Exercise[] = [
   { id: "de-serv-24", language: "de", exerciseType: "cloze_text", promptText: "Wir schaetzen die fachkundige Beratung.", cloze: { answer: "fachkundige", start: 15, end: 26, distractors: ["fachkundigen", "fachkundiger", "fachkundiges"] }, ruleIds: ["de.adj.definite.akk.fem"], level: "C1", difficulty: 0.95, tags: ["services"] },
   { id: "de-serv-25", language: "de", exerciseType: "cloze_text", promptText: "Die Zuverlaessigkeit ist unser Markenzeichen.", cloze: { answer: "unser", start: 25, end: 30, distractors: ["unsere", "unserem", "unserer"] }, ruleIds: ["de.case.nominativ.possessive"], level: "C1", difficulty: 0.96, tags: ["services"] }
 ];
+
+export const deExercises: Exercise[] = deExercisesRaw.map((exercise) => ({
+  ...exercise,
+  vocabulary: extractVocabulary(exercise),
+}));

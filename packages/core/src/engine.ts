@@ -13,6 +13,36 @@ import type {
   UserRuleState,
 } from "./index";
 
+const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
+
+const fnv1a32 = (input: string): number => {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash >>> 0;
+};
+
+const shouldSampleRegression = (
+  userId: string,
+  now: number,
+  regressionSampleRate: number
+): boolean => {
+  const rate = clamp01(regressionSampleRate);
+  if (rate <= 0) {
+    return false;
+  }
+  const bucketMs = 10 * 60 * 1000;
+  const bucket = Math.floor(now / bucketMs);
+  const hash = fnv1a32(`${userId}:${bucket}:regression`);
+  const roll = (hash % 10_000) / 10_000;
+  return roll < rate;
+};
+
+const regressionMinAgeMs = 7 * 24 * 60 * 60 * 1000;
+const regressionHighMasteryThreshold = 0.85;
+
 const buildRuleMap = (rules: RuleDefinition[]): Map<RuleId, RuleDefinition> => {
   return new Map(rules.map((rule) => [rule.ruleId, rule]));
 };
@@ -114,6 +144,7 @@ export const createEngine = (
     }
 
     let best: ExerciseSelection | null = null;
+    let regressionCandidate: ExerciseSelection | null = null;
 
     for (const exercise of filtered) {
       const ruleDefinitions = exercise.ruleIds
@@ -128,6 +159,46 @@ export const createEngine = (
         now,
       });
 
+      const states = exercise.ruleIds
+        .map((ruleId) => ruleStates[ruleId])
+        .filter((state): state is UserRuleState => Boolean(state));
+      if (states.length > 0) {
+        const allHighMastery = states.every((state) => state.mastery >= regressionHighMasteryThreshold);
+        const oldestLastSeen = states
+          .map((state) => state.lastSeen)
+          .filter((lastSeen): lastSeen is number => typeof lastSeen === "number")
+          .reduce<number | null>((oldest, current) => (
+            oldest === null || current < oldest ? current : oldest
+          ), null);
+
+        if (
+          allHighMastery &&
+          oldestLastSeen !== null &&
+          now - oldestLastSeen >= regressionMinAgeMs
+        ) {
+          const candidate: ExerciseSelection = { exercise, priorityScore };
+          if (!regressionCandidate) {
+            regressionCandidate = candidate;
+          } else {
+            const prevStates = getRuleStates(regressionCandidate.exercise.ruleIds, profile, deps, config);
+            const prevOldestLastSeen = regressionCandidate.exercise.ruleIds
+              .map((ruleId) => prevStates[ruleId]?.lastSeen)
+              .filter((lastSeen): lastSeen is number => typeof lastSeen === "number")
+              .reduce<number | null>((oldest, current) => (
+                oldest === null || current < oldest ? current : oldest
+              ), null);
+
+            const prevAge = prevOldestLastSeen === null ? 0 : now - prevOldestLastSeen;
+            const age = now - oldestLastSeen;
+            if (age > prevAge) {
+              regressionCandidate = candidate;
+            } else if (age === prevAge && exercise.id < regressionCandidate.exercise.id) {
+              regressionCandidate = candidate;
+            }
+          }
+        }
+      }
+
       if (!best || priorityScore > best.priorityScore) {
         best = { exercise, priorityScore };
       } else if (best && priorityScore === best.priorityScore) {
@@ -135,6 +206,13 @@ export const createEngine = (
           best = { exercise, priorityScore };
         }
       }
+    }
+
+    if (
+      regressionCandidate &&
+      shouldSampleRegression(profile.userId, now, config.scheduler.regressionSampleRate)
+    ) {
+      return regressionCandidate;
     }
 
     return best;

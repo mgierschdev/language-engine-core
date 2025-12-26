@@ -67,7 +67,16 @@ const exerciseFilter = (exercise: Exercise, profile: UserProfile): boolean => {
 };
 
 export const createInMemoryExerciseRepository = (): ExerciseRepository => ({
-  getAll: () => deExercises,
+  getAll: () => {
+    for (const exercise of deExercises) {
+      if (exercise.exerciseType === "cloze_text" && exercise.ruleIds.length !== 1) {
+        throw new Error(
+          `MVP constraint: cloze_text exercises must target exactly 1 ruleId (exercise ${exercise.id})`
+        );
+      }
+    }
+    return deExercises;
+  },
 });
 
 export const createInMemoryRuleRepository = (): RuleRepository => ({
@@ -161,7 +170,7 @@ export const createAppEngine = (profile: UserProfile) => {
   const config: EngineConfig = {
     scheduler: {
       minSpacingMs: 1000 * 60 * 60,
-      regressionSampleRate: 0,
+      regressionSampleRate: 0.1,
       now: () => Date.now(),
     },
     mastery: {
