@@ -42,6 +42,7 @@ export interface Exercise {
     distractors?: string[];
   };
   ruleIds: RuleId[];
+  level: string;
   difficulty: number;
   vocabulary?: string[];
   supports?: {
@@ -90,6 +91,7 @@ export interface VocabularyItem {
 export interface UserProfile {
   userId: string;
   level: string;
+  selectedLevels?: string[];
 }
 
 export interface SchedulerConfig {

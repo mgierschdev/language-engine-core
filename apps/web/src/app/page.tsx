@@ -1,12 +1,36 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AttemptEvent, ExerciseSelection, UserRuleState } from "@le/core";
 import { createAppEngine } from "@/lib/appEngine";
 
-const profile = {
-  userId: "local-user",
-  level: "A1",
+const userId = "local-user";
+const levels = ["A1", "A2", "B1", "B2", "C1"];
+
+const levelRank = (level: string): number => {
+  switch (level.toUpperCase()) {
+    case "A1":
+      return 1;
+    case "A2":
+      return 2;
+    case "B1":
+      return 3;
+    case "B2":
+      return 4;
+    case "C1":
+      return 5;
+    default:
+      return 0;
+  }
+};
+
+const highestLevel = (selected: string[]): string => {
+  if (selected.length === 0) {
+    return "A1";
+  }
+  return selected.reduce((best, current) => (
+    levelRank(current) > levelRank(best) ? current : best
+  ), selected[0]);
 };
 
 const buildOptions = (selection: ExerciseSelection | null): string[] => {
@@ -19,7 +43,19 @@ const buildOptions = (selection: ExerciseSelection | null): string[] => {
 };
 
 export default function Home() {
-  const { engine, userState } = useMemo(() => createAppEngine(profile), []);
+  const [selectedLevels, setSelectedLevels] = useState<string[]>(["A1"]);
+  const effectiveLevel = useMemo(
+    () => highestLevel(selectedLevels),
+    [selectedLevels]
+  );
+  const profile = useMemo(
+    () => ({ userId, level: effectiveLevel, selectedLevels }),
+    [effectiveLevel, selectedLevels]
+  );
+  const { engine, userState } = useMemo(
+    () => createAppEngine({ userId, level: "A1" }),
+    []
+  );
   const [selection, setSelection] = useState<ExerciseSelection | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<AttemptEvent | null>(null);
@@ -28,32 +64,44 @@ export default function Home() {
 
   const options = buildOptions(selection);
 
-  const loadNext = () => {
+  const loadNext = useCallback(() => {
     const next = engine.selectNextExercise(profile);
     setSelection(next);
     setSelectedAnswer(null);
     setFeedback(null);
     setStartedAt(Date.now());
-  };
+  }, [engine, profile]);
 
-  const refreshWeakestRules = () => {
+  const refreshWeakestRules = useCallback(() => {
     const states = userState.getAllRuleStates();
     const weakest = [...states]
       .sort((a, b) => a.mastery - b.mastery)
       .slice(0, 4);
     setWeakestRules(weakest);
-  };
+  }, [userState]);
 
   useEffect(() => {
     loadNext();
     refreshWeakestRules();
-  }, []);
+  }, [loadNext, refreshWeakestRules]);
+
+  const toggleLevel = (value: string) => {
+    setSelectedLevels((prev) => {
+      if (prev.includes(value)) {
+        if (prev.length === 1) {
+          return prev;
+        }
+        return prev.filter((level) => level !== value);
+      }
+      return [...prev, value].sort((a, b) => levelRank(a) - levelRank(b));
+    });
+  };
 
   const handlePrimary = () => {
     if (!selection) {
       return;
     }
-    if (feedback) {
+    if (feedback?.isCorrect) {
       loadNext();
       return;
     }
@@ -87,8 +135,23 @@ export default function Home() {
         </div>
         <div className="pill-row">
           <span className="pill">German</span>
-          <span className="pill">Level {profile.level}</span>
+          <span className="pill">Levels {selectedLevels.join(", ")}</span>
           <span className="pill">A1-C1 masteries</span>
+        </div>
+        <div className="level-selector">
+          <span className="level-label">Exercise level</span>
+          <div className="level-buttons">
+            {levels.map((value) => (
+              <button
+                key={value}
+                className={`level-btn${selectedLevels.includes(value) ? " active" : ""}`}
+                onClick={() => toggleLevel(value)}
+                type="button"
+              >
+                {value}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
@@ -118,7 +181,7 @@ export default function Home() {
                     selectedAnswer === option ? " selected" : ""
                   }`}
                   onClick={() => setSelectedAnswer(option)}
-                  disabled={Boolean(feedback)}
+                  disabled={Boolean(feedback?.isCorrect)}
                 >
                   {option}
                 </button>
@@ -128,9 +191,9 @@ export default function Home() {
               <button
                 className="primary-btn"
                 onClick={handlePrimary}
-                disabled={!selection || (!selectedAnswer && !feedback)}
+                disabled={!selection || !selectedAnswer}
               >
-                {feedback ? "Next" : "Submit"}
+                {feedback?.isCorrect ? "Next" : "Submit"}
               </button>
               <button
                 className="secondary-btn"
@@ -156,6 +219,13 @@ export default function Home() {
               ? "Nice work. Keep the rhythm and move on."
               : `Rules to revisit: ${feedback.failedRuleIds.join(", ")}`}
           </div>
+          {!feedback.isCorrect && (
+            <div className="feedback-body" style={{ marginTop: "10px" }}>
+              Hint: {selection.exercise.supports?.explanation
+                ? selection.exercise.supports.explanation
+                : "Focus on the rule label above and compare the distractors carefully."}
+            </div>
+          )}
           {selection.exercise.supports?.translation && (
             <div className="feedback-body" style={{ marginTop: "10px" }}>
               Translation: {selection.exercise.supports.translation}

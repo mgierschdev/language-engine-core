@@ -9,8 +9,7 @@ import {
   type ExerciseRepository,
   type AttemptLogRepository,
   type UserProfile,
-  type UserRuleState,
-  type UserStateRepository
+  type UserRuleState
 } from "@le/core";
 import { deExercises, deVocabulary } from "@le/content";
 import { createDeRuleEvaluatorRegistry, deRules } from "@le/plugin-de";
@@ -34,6 +33,15 @@ const levelRank = (level: string): number => {
   }
 };
 
+const highestLevel = (levels: string[]): string => {
+  if (levels.length === 0) {
+    return "A1";
+  }
+  return levels.reduce((best, current) => (
+    levelRank(current) > levelRank(best) ? current : best
+  ), levels[0]);
+};
+
 const vocabMinLevelMap = new Map(
   deVocabulary.map((item) => [item.lemma, item.minimumLevel])
 );
@@ -42,10 +50,16 @@ const exerciseFilter = (exercise: Exercise, profile: UserProfile): boolean => {
   if (exercise.language !== "de") {
     return false;
   }
+  const selectedLevels = profile.selectedLevels && profile.selectedLevels.length > 0
+    ? profile.selectedLevels
+    : [profile.level];
+  if (!selectedLevels.includes(exercise.level)) {
+    return false;
+  }
   if (!exercise.vocabulary || exercise.vocabulary.length === 0) {
     return true;
   }
-  const userRank = levelRank(profile.level);
+  const userRank = levelRank(highestLevel(selectedLevels));
   return exercise.vocabulary.every((lemma) => {
     const minLevel = vocabMinLevelMap.get(lemma);
     return minLevel ? levelRank(minLevel) <= userRank : true;
