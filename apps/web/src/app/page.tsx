@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { AttemptEvent, ExerciseSelection, UserRuleState } from "@le/core";
+import { useRouter } from "next/navigation";
+import {
+  computeStreakData,
+  type AttemptEvent,
+  type ExerciseSelection,
+  type UserRuleState,
+  type StreakData,
+} from "@le/core";
 import { createAppEngine } from "@/lib/appEngine";
 
 const userId = "local-user";
@@ -43,6 +50,7 @@ const buildOptions = (selection: ExerciseSelection | null): string[] => {
 };
 
 export default function Home() {
+  const router = useRouter();
   const [selectedLevels, setSelectedLevels] = useState<string[]>(["A1"]);
   const effectiveLevel = useMemo(
     () => highestLevel(selectedLevels),
@@ -52,7 +60,7 @@ export default function Home() {
     () => ({ userId, level: effectiveLevel, selectedLevels }),
     [effectiveLevel, selectedLevels]
   );
-  const { engine, userState } = useMemo(
+  const { engine, userState, attempts } = useMemo(
     () => createAppEngine({ userId, level: "A1" }),
     []
   );
@@ -61,6 +69,7 @@ export default function Home() {
   const [feedback, setFeedback] = useState<AttemptEvent | null>(null);
   const [startedAt, setStartedAt] = useState(Date.now());
   const [weakestRules, setWeakestRules] = useState<UserRuleState[]>([]);
+  const [streak, setStreak] = useState<StreakData | null>(null);
 
   const options = buildOptions(selection);
 
@@ -78,7 +87,19 @@ export default function Home() {
       .sort((a, b) => a.mastery - b.mastery)
       .slice(0, 4);
     setWeakestRules(weakest);
-  }, [userState]);
+
+    // Update streak
+    const attemptEvents = attempts.getAll?.(userId) ?? [];
+    const activityDates = Array.from(
+      new Set(
+        attemptEvents.map((attempt) =>
+          new Date(attempt.timestamp).toISOString().split("T")[0]
+        )
+      )
+    );
+    const streakData = computeStreakData(userId, activityDates);
+    setStreak(streakData);
+  }, [userState, attempts]);
 
   useEffect(() => {
     loadNext();
@@ -136,7 +157,18 @@ export default function Home() {
         <div className="pill-row">
           <span className="pill">German</span>
           <span className="pill">Levels {selectedLevels.join(", ")}</span>
-          <span className="pill">A1-C1 masteries</span>
+          {streak && streak.currentStreak > 0 && (
+            <span className="pill" style={{ background: "#10b98133", border: "1px solid #10b981" }}>
+              🔥 {streak.currentStreak} day streak
+            </span>
+          )}
+          <button
+            className="pill"
+            onClick={() => router.push("/dashboard")}
+            style={{ cursor: "pointer" }}
+          >
+            📊 Dashboard
+          </button>
         </div>
         <div className="level-selector">
           <span className="level-label">Exercise level</span>
