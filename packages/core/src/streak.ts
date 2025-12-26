@@ -29,16 +29,21 @@ export const computeStreakData = (
   let currentStreak = 0;
   let longestStreak = 0;
   let tempStreak = 0;
+  let isCurrentStreakActive = false;
 
   // Start from most recent date
   for (let i = 0; i < sorted.length; i++) {
     const currentDate = sorted[i];
 
     if (i === 0) {
-      // First date: check if it's today or yesterday to start streak
+      // First date: check if it's today or yesterday to start current streak
       if (currentDate === today || currentDate === yesterday) {
         tempStreak = 1;
         currentStreak = 1;
+        isCurrentStreakActive = true;
+      } else {
+        tempStreak = 1;
+        isCurrentStreakActive = false;
       }
     } else {
       const prevDate = sorted[i - 1];
@@ -46,13 +51,14 @@ export const computeStreakData = (
 
       if (daysDiff === 1) {
         tempStreak += 1;
-        if (i === 1 || (i > 1 && currentStreak > 0)) {
+        if (isCurrentStreakActive) {
           currentStreak = tempStreak;
         }
       } else {
         // Streak broken
         longestStreak = Math.max(longestStreak, tempStreak);
         tempStreak = 1;
+        isCurrentStreakActive = false;
       }
     }
   }

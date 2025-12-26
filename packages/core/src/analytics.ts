@@ -27,7 +27,7 @@ export const computeErrorTrends = (
   const ruleMap = new Map(rules.map((r) => [r.ruleId, r]));
   const categoryStats = new Map<
     ErrorCategory,
-    { errorCount: number; totalAttempts: number; recentErrors: number }
+    { errorCount: number; totalAttempts: number; recentErrors: number; recentTotal: number }
   >();
 
   const recentThreshold = Date.now() - 7 * 24 * 60 * 60 * 1000; // Last 7 days
@@ -41,12 +41,17 @@ export const computeErrorTrends = (
         errorCount: 0,
         totalAttempts: 0,
         recentErrors: 0,
+        recentTotal: 0,
       };
 
       stats.totalAttempts += 1;
       if (attempt.failedRuleIds.includes(ruleId)) {
         stats.errorCount += 1;
-        if (attempt.timestamp >= recentThreshold) {
+      }
+
+      if (attempt.timestamp >= recentThreshold) {
+        stats.recentTotal += 1;
+        if (attempt.failedRuleIds.includes(ruleId)) {
           stats.recentErrors += 1;
         }
       }
@@ -59,9 +64,8 @@ export const computeErrorTrends = (
   for (const [category, stats] of categoryStats) {
     const errorRate = stats.totalAttempts > 0 ? stats.errorCount / stats.totalAttempts : 0;
 
-    // Simple improvement rate: compare recent vs overall error rate
-    const recentAttempts = attempts.filter((a) => a.timestamp >= recentThreshold).length;
-    const recentErrorRate = recentAttempts > 0 ? stats.recentErrors / recentAttempts : 0;
+    // Compare recent error rate vs overall error rate
+    const recentErrorRate = stats.recentTotal > 0 ? stats.recentErrors / stats.recentTotal : 0;
     const improvementRate = errorRate - recentErrorRate; // Positive means improving
 
     trends.push({

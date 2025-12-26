@@ -104,16 +104,6 @@ export default function Home() {
   useEffect(() => {
     loadNext();
     refreshWeakestRules();
-    
-    // Check if user is new (no attempts yet)
-    const attemptEvents = attempts.getAll?.(userId) ?? [];
-    if (typeof window !== "undefined" && attemptEvents.length === 0) {
-      const hasSeenWelcome = localStorage.getItem("le.hasSeenWelcome");
-      if (!hasSeenWelcome) {
-        // Show welcome message or redirect to diagnostic
-        localStorage.setItem("le.hasSeenWelcome", "true");
-      }
-    }
   }, [loadNext, refreshWeakestRules, attempts]);
 
   const toggleLevel = (value: string) => {

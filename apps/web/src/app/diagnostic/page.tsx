@@ -265,7 +265,7 @@ export default function DiagnosticTest() {
         <div style={{ padding: "16px" }}>
           <p style={{ fontSize: "0.9rem", color: "#666" }}>
             This diagnostic test helps us understand your current German proficiency level.
-            Answer as accurately as you can - there&apos;s no penalty for incorrect answers.
+            Answer as accurately as you can - there is no penalty for incorrect answers.
           </p>
         </div>
       </section>
