@@ -2,7 +2,12 @@ import type { ExercisePriorityFn, MasteryUpdateFn } from "./index";
 
 const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
 
+const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
+
 const msToDays = (ms: number): number => ms / (1000 * 60 * 60 * 24);
+
+const coverageMinAgeDays = 30;
+const coverageMasteryGapFloor = 0.15;
 
 export const defaultPriority: ExercisePriorityFn = ({
   exercise,
@@ -30,7 +35,12 @@ export const defaultPriority: ExercisePriorityFn = ({
     }
 
     const recency = Math.min(1, timeSince / scheduler.minSpacingMs);
-    return (1 - state.mastery) * definition.baseImportance * recency;
+    const isStale = timeSince >= coverageMinAgeDays * 24 * 60 * 60 * 1000;
+    const masteryGap = isStale
+      ? Math.max(1 - state.mastery, coverageMasteryGapFloor)
+      : (1 - state.mastery);
+
+    return masteryGap * definition.baseImportance * recency;
   });
 
   return priorities.length > 0 ? Math.max(...priorities) : 0;
@@ -50,9 +60,14 @@ export const defaultMasteryUpdate: MasteryUpdateFn = ({
     ? mastery.correctIncrement * state.volatility
     : -mastery.incorrectDecrement * state.volatility;
 
+  const volatility = isCorrect
+    ? clamp(state.volatility - 0.02, 0.75, 2)
+    : clamp(state.volatility + 0.08, 0.75, 2);
+
   return {
     ...state,
     mastery: clamp01(decayed + delta),
     lastSeen: now,
+    volatility,
   };
 };

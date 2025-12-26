@@ -15,7 +15,7 @@ const extractVocabulary = (exercise: Exercise): string[] => {
 
   const found = new Set<string>();
   for (const part of parts) {
-    const tokens = part.match(/[A-Za-z]+/g) ?? [];
+    const tokens = part.match(/\p{L}+/gu) ?? [];
     for (const token of tokens) {
       const canonical = vocabLemmaMap.get(token.toLowerCase());
       if (canonical) {

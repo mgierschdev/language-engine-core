@@ -43,6 +43,8 @@ const shouldSampleRegression = (
 const regressionMinAgeMs = 7 * 24 * 60 * 60 * 1000;
 const regressionHighMasteryThreshold = 0.85;
 
+const failureStreakThreshold = 2;
+
 const buildRuleMap = (rules: RuleDefinition[]): Map<RuleId, RuleDefinition> => {
   return new Map(rules.map((rule) => [rule.ruleId, rule]));
 };
@@ -132,6 +134,74 @@ export const createEngine = (
 ): Engine => {
   const ruleMap = buildRuleMap(deps.rules.getAll());
 
+  const lastSelectedExerciseIdByUser = new Map<string, string>();
+  const lastSelectedRuleIdByUser = new Map<string, RuleId>();
+  const failureStreakByUserRule = new Map<string, number>();
+
+  const keyUserRule = (userId: string, ruleId: RuleId): string => `${userId}:${ruleId}`;
+
+  const selectForRule = (
+    profile: UserProfile,
+    exercises: Exercise[],
+    ruleId: RuleId,
+    opts?: { preferEasiest?: boolean }
+  ): ExerciseSelection | null => {
+    const now = config.scheduler.now();
+    const candidates = exercises.filter((exercise) => exercise.ruleIds.includes(ruleId));
+    if (candidates.length === 0) {
+      return null;
+    }
+
+    let best: ExerciseSelection | null = null;
+    for (const exercise of candidates) {
+      const lastExerciseId = lastSelectedExerciseIdByUser.get(profile.userId);
+      if (lastExerciseId && candidates.length > 1 && exercise.id === lastExerciseId) {
+        continue;
+      }
+
+      const ruleDefinitions = exercise.ruleIds
+        .map((rid) => ruleMap.get(rid))
+        .filter((rule): rule is RuleDefinition => Boolean(rule));
+      const ruleStates = getRuleStates(exercise.ruleIds, profile, deps, config);
+      const priorityScore = config.computePriority({
+        exercise,
+        ruleDefinitions,
+        ruleStates,
+        scheduler: config.scheduler,
+        now,
+      });
+
+      const candidate: ExerciseSelection = { exercise, priorityScore };
+      if (!best) {
+        best = candidate;
+        continue;
+      }
+
+      if (opts?.preferEasiest) {
+        if (exercise.difficulty < best.exercise.difficulty) {
+          best = candidate;
+        } else if (exercise.difficulty === best.exercise.difficulty && exercise.id < best.exercise.id) {
+          best = candidate;
+        }
+        continue;
+      }
+
+      if (priorityScore > best.priorityScore) {
+        best = candidate;
+      } else if (priorityScore === best.priorityScore && exercise.id < best.exercise.id) {
+        best = candidate;
+      }
+    }
+
+    if (best) {
+      lastSelectedExerciseIdByUser.set(profile.userId, best.exercise.id);
+      if (best.exercise.ruleIds.length === 1) {
+        lastSelectedRuleIdByUser.set(profile.userId, best.exercise.ruleIds[0]);
+      }
+    }
+    return best;
+  };
+
   const selectNextExercise = (profile: UserProfile): ExerciseSelection | null => {
     const now = config.scheduler.now();
     const exercises = deps.exercises.getAll();
@@ -143,10 +213,69 @@ export const createEngine = (
       return null;
     }
 
+    // Session pacing: if the learner is failing the same rule repeatedly in this session,
+    // inject an easier exercise for that rule.
+    let pacingRuleId: RuleId | null = null;
+    let pacingStreak = 0;
+    for (const exercise of filtered) {
+      for (const ruleId of exercise.ruleIds) {
+        const streak = failureStreakByUserRule.get(keyUserRule(profile.userId, ruleId)) ?? 0;
+        if (streak >= failureStreakThreshold && streak > pacingStreak) {
+          pacingStreak = streak;
+          pacingRuleId = ruleId;
+        }
+      }
+    }
+    if (pacingRuleId) {
+      const pacingPick = selectForRule(profile, filtered, pacingRuleId, { preferEasiest: true });
+      if (pacingPick) {
+        return pacingPick;
+      }
+    }
+
+    // Cold-start seeding: before fully adaptive scheduling, ensure each rule is seen at least once.
+    // Deterministic: pick unseen rule exercises by highest importance, then stable ID.
+    let seedBest: { ruleId: RuleId; baseImportance: number; exercise: Exercise } | null = null;
+    for (const exercise of filtered) {
+      if (exercise.ruleIds.length !== 1) {
+        continue;
+      }
+      const ruleId = exercise.ruleIds[0];
+      const state = deps.userState.getRuleState(profile.userId, ruleId);
+      if (state && state.lastSeen !== null) {
+        continue;
+      }
+      const definition = ruleMap.get(ruleId);
+      const baseImportance = definition?.baseImportance ?? 0;
+      if (!seedBest) {
+        seedBest = { ruleId, baseImportance, exercise };
+        continue;
+      }
+      if (baseImportance > seedBest.baseImportance) {
+        seedBest = { ruleId, baseImportance, exercise };
+      } else if (baseImportance === seedBest.baseImportance && exercise.id < seedBest.exercise.id) {
+        seedBest = { ruleId, baseImportance, exercise };
+      }
+    }
+    if (seedBest) {
+      const seeded = selectForRule(profile, filtered, seedBest.ruleId);
+      if (seeded) {
+        return seeded;
+      }
+    }
+
     let best: ExerciseSelection | null = null;
     let regressionCandidate: ExerciseSelection | null = null;
+    let bestEffectiveScore: number | null = null;
+    let bestDifficultyDistance: number | null = null;
+    const lastExerciseId = lastSelectedExerciseIdByUser.get(profile.userId);
+    const lastRuleId = lastSelectedRuleIdByUser.get(profile.userId);
 
     for (const exercise of filtered) {
+      if (lastExerciseId && filtered.length > 1 && exercise.id === lastExerciseId) {
+        continue;
+      }
+
       const ruleDefinitions = exercise.ruleIds
         .map((ruleId) => ruleMap.get(ruleId))
         .filter((rule): rule is RuleDefinition => Boolean(rule));
@@ -158,6 +287,54 @@ export const createEngine = (
         scheduler: config.scheduler,
         now,
       });
+
+      let effectiveScore = priorityScore;
+
+      if (exercise.ruleIds.length === 1) {
+        const ruleId = exercise.ruleIds[0];
+        const state = ruleStates[ruleId];
+
+        // Penalty for immediate same-rule repeats (variety).
+        if (lastRuleId && lastRuleId === ruleId) {
+          effectiveScore *= 0.85;
+        }
+
+        // Difficulty ramp: pick difficulty near current mastery.
+        const targetDifficulty = clamp01(state.mastery);
+        const difficultyDistance = Math.abs(exercise.difficulty - targetDifficulty);
+
+        // Select by effective score; break ties by difficulty distance then stable ID.
+        if (
+          bestEffectiveScore === null ||
+          effectiveScore > bestEffectiveScore ||
+          (
+            effectiveScore === bestEffectiveScore &&
+            (bestDifficultyDistance === null || difficultyDistance < bestDifficultyDistance)
+          )
+        ) {
+          bestEffectiveScore = effectiveScore;
+          bestDifficultyDistance = difficultyDistance;
+          best = { exercise, priorityScore };
+        } else if (
+          best &&
+          bestEffectiveScore !== null &&
+          effectiveScore === bestEffectiveScore &&
+          bestDifficultyDistance !== null &&
+          difficultyDistance === bestDifficultyDistance &&
+          exercise.id < best.exercise.id
+        ) {
+          best = { exercise, priorityScore };
+        }
+      } else {
+        // Multi-rule exercises: keep legacy deterministic tie-breaking.
+        if (!best || priorityScore > best.priorityScore) {
+          best = { exercise, priorityScore };
+        } else if (best && priorityScore === best.priorityScore) {
+          if (exercise.id < best.exercise.id) {
+            best = { exercise, priorityScore };
+          }
+        }
+      }
 
       const states = exercise.ruleIds
         .map((ruleId) => ruleStates[ruleId])
@@ -199,20 +376,25 @@ export const createEngine = (
         }
       }
 
-      if (!best || priorityScore > best.priorityScore) {
-        best = { exercise, priorityScore };
-      } else if (best && priorityScore === best.priorityScore) {
-        if (exercise.id < best.exercise.id) {
-          best = { exercise, priorityScore };
-        }
-      }
+      // regressionCandidate selection logic remains based on raw priorityScore (not effectiveScore)
     }
 
     if (
       regressionCandidate &&
       shouldSampleRegression(profile.userId, now, config.scheduler.regressionSampleRate)
     ) {
+      lastSelectedExerciseIdByUser.set(profile.userId, regressionCandidate.exercise.id);
+      if (regressionCandidate.exercise.ruleIds.length === 1) {
+        lastSelectedRuleIdByUser.set(profile.userId, regressionCandidate.exercise.ruleIds[0]);
+      }
       return regressionCandidate;
+    }
+
+    if (best) {
+      lastSelectedExerciseIdByUser.set(profile.userId, best.exercise.id);
+      if (best.exercise.ruleIds.length === 1) {
+        lastSelectedRuleIdByUser.set(profile.userId, best.exercise.ruleIds[0]);
+      }
     }
 
     return best;
@@ -240,6 +422,14 @@ export const createEngine = (
     );
 
     deps.attempts.append(event);
+
+    // Update session-local failure streaks (for pacing).
+    for (const ruleId of exercise.ruleIds) {
+      const key = keyUserRule(profile.userId, ruleId);
+      const wasCorrectForRule = !failedRuleIds.includes(ruleId);
+      const prev = failureStreakByUserRule.get(key) ?? 0;
+      failureStreakByUserRule.set(key, wasCorrectForRule ? 0 : prev + 1);
+    }
 
     for (const ruleId of exercise.ruleIds) {
       const state = deps.userState.getRuleState(profile.userId, ruleId) ??

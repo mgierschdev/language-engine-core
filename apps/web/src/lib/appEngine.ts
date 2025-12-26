@@ -14,6 +14,10 @@ import {
 import { deExercises, deVocabulary } from "@le/content";
 import { createDeRuleEvaluatorRegistry, deRules } from "@le/plugin-de";
 
+const tokenize = (text: string): string[] => {
+  return text.match(/\p{L}+/gu) ?? [];
+};
+
 const levelRank = (level: string): number => {
   switch (level.toUpperCase()) {
     case "A1":
@@ -68,11 +72,85 @@ const exerciseFilter = (exercise: Exercise, profile: UserProfile): boolean => {
 
 export const createInMemoryExerciseRepository = (): ExerciseRepository => ({
   getAll: () => {
+    const ruleIdSet = new Set(deRules.map((rule) => rule.ruleId));
+
+    // Dev-only vocabulary audit: helps grow vocab list intentionally.
+    if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+      const known = new Set(deVocabulary.map((item) => item.lemma.toLowerCase()));
+      const counts = new Map<string, number>();
+
+      for (const exercise of deExercises) {
+        const parts = [
+          exercise.promptText,
+          exercise.cloze.answer,
+          ...(exercise.cloze.distractors ?? []),
+        ];
+        for (const part of parts) {
+          for (const token of tokenize(part)) {
+            const normalized = token.toLowerCase();
+            if (normalized.length <= 2) {
+              continue;
+            }
+            if (known.has(normalized)) {
+              continue;
+            }
+            counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
+          }
+        }
+      }
+
+      const top = [...counts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 20);
+
+      if (top.length > 0) {
+        console.warn(
+          "[le] Vocab audit: tokens in exercises missing from deVocabulary (top 20):",
+          top.map(([token, count]) => `${token}(${count})`).join(", ")
+        );
+      }
+    }
+
     for (const exercise of deExercises) {
       if (exercise.exerciseType === "cloze_text" && exercise.ruleIds.length !== 1) {
         throw new Error(
           `MVP constraint: cloze_text exercises must target exactly 1 ruleId (exercise ${exercise.id})`
         );
+      }
+
+      if (exercise.difficulty < 0 || exercise.difficulty > 1) {
+        throw new Error(
+          `Invalid difficulty (must be in [0,1]) for exercise ${exercise.id}`
+        );
+      }
+
+      if (!exercise.ruleIds.every((ruleId) => ruleIdSet.has(ruleId))) {
+        throw new Error(
+          `Exercise ${exercise.id} references unknown ruleId(s): ${exercise.ruleIds.join(", ")}`
+        );
+      }
+
+      const { start, end, answer, distractors } = exercise.cloze;
+      if (start < 0 || end < 0 || start > end || end > exercise.promptText.length) {
+        throw new Error(`Invalid cloze indices for exercise ${exercise.id}`);
+      }
+
+      const sliced = exercise.promptText.slice(start, end);
+      if (sliced !== answer) {
+        throw new Error(
+          `Cloze mismatch for exercise ${exercise.id}: promptText[start:end]="${sliced}" but answer="${answer}"`
+        );
+      }
+
+      const distractorList = distractors ?? [];
+      if (distractorList.includes(answer)) {
+        throw new Error(
+          `Distractors must not contain the correct answer (exercise ${exercise.id})`
+        );
+      }
+      const unique = new Set(distractorList);
+      if (unique.size !== distractorList.length) {
+        throw new Error(`Duplicate distractors in exercise ${exercise.id}`);
       }
     }
     return deExercises;
